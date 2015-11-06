@@ -11,8 +11,13 @@ from Products.CMFPlone.utils import getSiteEncoding
 from Products.CMFPlone.utils import safe_unicode
 from zope.component import adapter
 from zope.component.hooks import getSite
+from zope.globalrequest import getRequest
+from zope.i18n import translate
+from zope.i18nmessageid.message import Message
 from zope.interface import implementer
 from zope.interface import Interface
+
+import Missing
 
 
 def json_compatible(value):
@@ -112,3 +117,17 @@ def time_converter(value):
 @implementer(IJsonCompatible)
 def richtext_converter(value):
     return json_compatible(value.output)
+
+
+@adapter(Message)
+@implementer(IJsonCompatible)
+def i18n_message_converter(value):
+    request = getRequest()
+    value = translate(value, context=request)
+    return value
+
+
+@adapter(Missing.Value.__class__)
+@implementer(IJsonCompatible)
+def missing_value_converter(value):
+    return None

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from plone.rest import Service
 from plone.restapi.interfaces import ISerializeToJson
+from plone.restapi.search.handler import SearchHandler
 
 
 class DexterityGet(Service):
@@ -37,3 +38,17 @@ class PloneSiteRootGet(Service):
 #
 #     def render(self):
 #         return {'service': 'options'}
+
+
+class SearchGet(Service):
+
+    def render(self):
+        json_query = self.request.form.get('q')
+        return SearchHandler(self.context, self.request).search(json_query)
+
+
+class SearchPost(Service):
+
+    def render(self):
+        json_query = self.request.get('BODY')
+        return SearchHandler(self.context, self.request).search(json_query)

@@ -47,4 +47,20 @@
     />
   -->
 
+  <!-- Any context -->
+
+  <plone:service
+    method="GET"
+    for="zope.interface.Interface"
+    factory=".services.SearchGet"
+    name="search"
+    />
+
+  <plone:service
+    method="POST"
+    for="zope.interface.Interface"
+    factory=".services.SearchPost"
+    name="search"
+    />
+
 </configure>
