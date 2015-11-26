@@ -1,16 +1,20 @@
 # -*- coding: utf-8 -*-
+from datetime import date
 from DateTime import DateTime
+from datetime import datetime
 from plone.app.contenttypes.behaviors.richtext import IRichText
 from plone.app.testing import setRoles
 from plone.app.testing import SITE_OWNER_NAME
 from plone.app.testing import SITE_OWNER_PASSWORD
 from plone.app.testing import TEST_USER_ID
 from plone.dexterity.utils import createContentInContainer
+from plone.restapi.search.query import DateIndexQueryOptionsParser
 from plone.restapi.search.handler import SearchHandler
 from plone.restapi.testing import PLONE_RESTAPI_FUNCTIONAL_TESTING
 from plone.restapi.testing import PLONE_RESTAPI_INTEGRATION_TESTING
 from plone.restapi.testing import RelativeSession
 from Products.CMFCore.utils import getToolByName
+from pytz import timezone
 
 import json
 import transaction
@@ -39,12 +43,20 @@ class TestSearchFunctional(unittest.TestCase):
         # /plone/my-folder/my-document
         self.doc = createContentInContainer(
             self.folder, u'Document',
+            created=DateTime(2015, 12, 31, 23, 45),
             title=u'My Document')
 
-        # /plone/my-folder/some-document
+        # /plone/my-folder/really-old-document
         createContentInContainer(
             self.folder, u'Document',
-            title=u'Some document',
+            created=DateTime(1950, 1, 1, 14, 45),
+            title=u'Really old Document',
+            text=IRichText['text'].fromUnicode(u'<p>Lorem Ipsum</p>'))
+
+        createContentInContainer(
+            self.portal, u'Document',
+            created=DateTime(1950, 1, 1, 14, 45),
+            title=u'Old Document outside search context',
             text=IRichText['text'].fromUnicode(u'<p>Lorem Ipsum</p>'))
 
         transaction.commit()
@@ -52,6 +64,10 @@ class TestSearchFunctional(unittest.TestCase):
     def test_complex_query_get(self):
         query = {
             'SearchableText': 'lorem',
+            'created': {
+                'query': [date(1949, 1, 1).isoformat(),
+                          date(1951, 1, 1).isoformat()],
+                'range': 'min:max'},
             'path': {
                 'query': '/'.join(self.folder.getPhysicalPath()),
             }
@@ -63,13 +79,17 @@ class TestSearchFunctional(unittest.TestCase):
         self.assertEqual(1, len(response.json()['member']))
 
         self.assertEqual(
-            u'Some document',
+            u'Really old Document',
             response.json()['member'][0]['Title']
         )
 
     def test_complex_query_post(self):
         query = {
             'SearchableText': 'lorem',
+            'created': {
+                'query': [date(1949, 1, 1).isoformat(),
+                          date(1951, 1, 1).isoformat()],
+                'range': 'min:max'},
             'path': {
                 'query': '/'.join(self.folder.getPhysicalPath()),
             }
@@ -80,7 +100,7 @@ class TestSearchFunctional(unittest.TestCase):
         self.assertEqual(1, len(response.json()['member']))
 
         self.assertEqual(
-            u'Some document',
+            u'Really old Document',
             response.json()['member'][0]['Title']
         )
 
@@ -153,4 +173,110 @@ class TestSearchIntegration(unittest.TestCase):
         self.assertEqual(
             u'My Document',
             results['member'][0]['Title']
+        )
+
+    def test_date_range_query(self):
+        createContentInContainer(
+            self.folder, u'Document',
+            created=DateTime(1950, 1, 1, 14, 45),
+            title=u'Really old Document')
+
+        createContentInContainer(
+            self.folder, u'Document',
+            created=DateTime(2015, 1, 1, 14, 45),
+            title=u'Doc outside date range',
+            text=IRichText['text'].fromUnicode(u'<p>Lorem Ipsum</p>'))
+
+        createContentInContainer(
+            self.portal, u'Document',
+            created=DateTime(1950, 1, 1, 14, 45),
+            title=u'Old Document outside search context')
+
+        json_query = json.dumps({
+            'created': {
+                'query': [date(1949, 1, 1).isoformat(),
+                          date(1951, 1, 1).isoformat()],
+                'range': 'min:max'},
+            'path': {
+                'query': '/'.join(self.folder.getPhysicalPath()),
+            }
+        })
+
+        results = SearchHandler(self.portal, self.request).search(json_query)
+
+        self.assertEqual(1, results['items_count'])
+        self.assertEqual(1, len(results['member']))
+
+        self.assertEqual(
+            u'Really old Document',
+            results['member'][0]['Title']
+        )
+
+
+class TestDateIndexQueryOptionsParser(unittest.TestCase):
+
+    def test_nested_options(self):
+        query = {
+            'query': [date(1949, 12, 27).isoformat(),
+                      date(1951, 12, 27).isoformat()],
+            'range': 'min:max'
+        }
+        self.assertEqual(
+            {u'query': [DateTime('1949/12/27 00:00:00 GMT+0'),
+                        DateTime('1951/12/27 00:00:00 GMT+0')],
+             u'range': u'min:max'},
+            DateIndexQueryOptionsParser()(query)
+        )
+
+    def test_py_date(self):
+        query = date(2015, 12, 27).isoformat()
+        self.assertEqual(
+            DateTime('2015/12/27 00:00:00 GMT+0'),
+            DateIndexQueryOptionsParser()(query)
+        )
+
+    def test_py_datetime_naive(self):
+        query = datetime(2015, 12, 27, 16, 45).isoformat()
+        self.assertEqual(
+            DateTime('2015/12/27 16:45:00 GMT+0'),
+            DateIndexQueryOptionsParser()(query)
+        )
+
+    def test_zope_datetime_naive(self):
+        query = DateTime(2015, 12, 27).ISO8601()
+        self.assertEqual(
+            DateTime('2015/12/27 00:00:00 GMT+0'),
+            DateIndexQueryOptionsParser()(query)
+        )
+
+    def test_py_datetime_tz(self):
+        tz = timezone('Europe/Zurich')
+
+        # Winter
+        query = tz.localize(datetime(2015, 12, 27, 16, 45)).isoformat()
+        self.assertEqual(
+            DateTime('2015/12/27 16:45:00 GMT+1'),
+            DateIndexQueryOptionsParser()(query)
+        )
+
+        # Summer (DST)
+        query = tz.localize(datetime(2015, 06, 27, 16, 45)).isoformat()
+        self.assertEqual(
+            DateTime('2015/06/27 16:45:00 GMT+2'),
+            DateIndexQueryOptionsParser()(query)
+        )
+
+    def test_zope_datetime_tz(self):
+        # Winter
+        query = DateTime('2015/12/27 16:45:00 Europe/Zurich').ISO8601()
+        self.assertEqual(
+            DateTime('2015/12/27 16:45:00 GMT+1'),
+            DateIndexQueryOptionsParser()(query)
+        )
+
+        # Summer (DST)
+        query = DateTime('2015/06/27 16:45:00 Europe/Zurich').ISO8601()
+        self.assertEqual(
+            DateTime('2015/06/27 16:45:00 GMT+2'),
+            DateIndexQueryOptionsParser()(query)
         )

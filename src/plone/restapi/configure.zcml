@@ -22,5 +22,6 @@
   <adapter factory=".serializer.SerializeSiteRootToJson" />
 
   <include package=".serializer" />
+  <include package=".search" />
 
 </configure>
