@@ -1,0 +1,95 @@
+GET /plone/search?q=%7B%22sort_on%22%3A+%22path%22%7D
+Accept: application/json
+
+HTTP 200 OK
+content-type: application/json
+
+{
+  "items_count": 2, 
+  "member": [
+    {
+      "CreationDate": "<...>", 
+      "Creator": "test_user_1_", 
+      "Date": "<...>", 
+      "Description": "", 
+      "EffectiveDate": "None", 
+      "ExpirationDate": "None", 
+      "ModificationDate": "<...>", 
+      "Subject": [], 
+      "Title": "", 
+      "Type": "Page", 
+      "UID": "<...>", 
+      "author_name": null, 
+      "cmf_uid": 1, 
+      "commentators": [], 
+      "created": "<...>", 
+      "effective": "1969-12-31T00:00:00+00:00", 
+      "end": null, 
+      "exclude_from_nav": false, 
+      "expires": "2499-12-31T00:00:00+00:00", 
+      "getIcon": "", 
+      "getId": "front-page", 
+      "getObjSize": "0 KB", 
+      "getPath": "/plone/front-page", 
+      "getRemoteUrl": null, 
+      "getURL": "http://localhost:55001/plone/front-page", 
+      "id": "front-page", 
+      "in_response_to": null, 
+      "is_folderish": false, 
+      "last_comment_date": null, 
+      "listCreators": [
+        "test_user_1_"
+      ], 
+      "location": null, 
+      "meta_type": "Dexterity Item", 
+      "modified": "<...>", 
+      "portal_type": "Document", 
+      "review_state": "private", 
+      "start": null, 
+      "sync_uid": null, 
+      "total_comments": 0
+    }, 
+    {
+      "CreationDate": "<...>", 
+      "Creator": "admin", 
+      "Date": "<...>", 
+      "Description": "", 
+      "EffectiveDate": "None", 
+      "ExpirationDate": "None", 
+      "ModificationDate": "<...>", 
+      "Subject": [], 
+      "Title": "Test Folder", 
+      "Type": "Folder", 
+      "UID": "<...>", 
+      "author_name": null, 
+      "cmf_uid": null, 
+      "commentators": [], 
+      "created": "<...>", 
+      "effective": "1969-12-31T00:00:00+00:00", 
+      "end": null, 
+      "exclude_from_nav": false, 
+      "expires": "2499-12-31T00:00:00+00:00", 
+      "getIcon": "", 
+      "getId": "robot-test-folder", 
+      "getObjSize": "0 KB", 
+      "getPath": "/plone/robot-test-folder", 
+      "getRemoteUrl": null, 
+      "getURL": "http://localhost:55001/plone/robot-test-folder", 
+      "id": "robot-test-folder", 
+      "in_response_to": null, 
+      "is_folderish": true, 
+      "last_comment_date": null, 
+      "listCreators": [
+        "admin"
+      ], 
+      "location": null, 
+      "meta_type": "Dexterity Container", 
+      "modified": "<...>", 
+      "portal_type": "Folder", 
+      "review_state": "private", 
+      "start": null, 
+      "sync_uid": null, 
+      "total_comments": 0
+    }
+  ]
+}

@@ -223,6 +223,11 @@ class TestTraversal(unittest.TestCase):
         response = self.api_session.get(self.portal.absolute_url())
         save_response_for_documentation('siteroot.json', response)
 
+    def test_documentation_search(self):
+        query = json.dumps({'sort_on': 'path'})
+        response = self.api_session.get('/search', params={'q': query})
+        save_response_for_documentation('search.json', response)
+
     def test_documentation_404_not_found(self):
         response = self.api_session.get('non-existing-resource')
         save_response_for_documentation('404_not_found.json', response)
