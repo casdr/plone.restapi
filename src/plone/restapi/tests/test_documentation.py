@@ -1,23 +1,22 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime
-from plone.restapi.testing import PLONE_RESTAPI_FUNCTIONAL_TESTING
-from plone.restapi.testing import RelativeSession
 from plone.app.testing import setRoles
-from plone.app.testing import TEST_USER_ID
 from plone.app.testing import SITE_OWNER_NAME
 from plone.app.testing import SITE_OWNER_PASSWORD
+from plone.app.testing import TEST_USER_ID
 from plone.app.textfield.value import RichTextValue
-from plone.namedfile.file import NamedBlobImage
 from plone.namedfile.file import NamedBlobFile
+from plone.namedfile.file import NamedBlobImage
+from plone.restapi.testing import PLONE_RESTAPI_FUNCTIONAL_TESTING
+from plone.restapi.testing import RelativeSession
 from plone.testing.z2 import Browser
-
 from z3c.relationfield import RelationValue
 from zope.component import getUtility
 from zope.intid.interfaces import IIntIds
 
-import unittest2 as unittest
-
+import json
 import os
+import unittest2 as unittest
 
 REQUEST_HEADER_KEYS = [
     'accept'
@@ -26,6 +25,15 @@ REQUEST_HEADER_KEYS = [
 RESPONSE_HEADER_KEYS = [
     'content-type',
     'allow',
+]
+
+ELLIPSIS_FIELDS = [
+    'CreationDate',
+    'Date',
+    'ModificationDate',
+    'UID',
+    'created',
+    'modified',
 ]
 
 base_path = os.path.join(
@@ -38,7 +46,35 @@ base_path = os.path.join(
 )
 
 
-def save_response_for_documentation(filename, response):
+def ellipsify(obj, ellipsis_for):
+    """Recursively substitute the values for any keys listed in `ellipsis_for`
+    with an ellipsis (...).
+
+    This is so we can keep a stable output for response types that include
+    fields that change with every run, like modification dates.
+    """
+    if isinstance(obj, dict):
+        new_dict = {}
+        for key, value in sorted(obj.items()):
+            if key in ellipsis_for:
+                new_dict[key] = '<...>'
+                continue
+            if isinstance(value, (list, dict)):
+                new_dict[key] = ellipsify(value, ellipsis_for)
+            else:
+                new_dict[key] = value
+        return new_dict
+
+    elif isinstance(obj, list):
+        return [ellipsify(elem, ellipsis_for) for elem in obj]
+    else:
+        return obj
+
+
+def save_response_for_documentation(filename, response, ellipsis_for=None):
+    if ellipsis_for is None:
+        ellipsis_for = ELLIPSIS_FIELDS
+
     f = open('{}/{}'.format(base_path, filename), 'w')
     f.write('{} {}\n'.format(
         response.request.method,
@@ -53,7 +89,11 @@ def save_response_for_documentation(filename, response):
         if key.lower() in RESPONSE_HEADER_KEYS:
             f.write('{}: {}\n'.format(key.lower(), value))
     f.write('\n')
-    f.write(response.content)
+
+    content = json.loads(response.content)
+    content = ellipsify(content, ellipsis_for)
+
+    f.write(json.dumps(content, indent=2, sort_keys=True))
     f.close()
 
 
