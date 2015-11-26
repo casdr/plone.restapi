@@ -175,6 +175,70 @@ class TestSearchIntegration(unittest.TestCase):
             results['member'][0]['Title']
         )
 
+    def test_explicit_path_query(self):
+        json_query = json.dumps(
+            {'path': '/'.join(self.doc.getPhysicalPath())})
+
+        results = SearchHandler(self.portal, self.request).search(json_query)
+
+        self.assertEqual(1, results['items_count'])
+        self.assertEqual(1, len(results['member']))
+
+        self.assertDictContainsSubset(
+            {u'Title': u'My Document',
+             u'getId': u'my-document'},
+            results['member'][0]
+        )
+
+    def test_search_on_context_constrains_query_by_path(self):
+        createContentInContainer(
+            self.portal, u'Document',
+            title=u'Document outside folder')
+
+        context = self.folder
+        results = SearchHandler(context, self.request).search()
+
+        self.assertEqual(2, results['items_count'])
+        self.assertEqual(2, len(results['member']))
+
+        result_paths = [item['getPath'] for item in results['member']]
+        self.assertSetEqual(
+            set(result_paths),
+            {u'/plone/my-folder', u'/plone/my-folder/my-document'})
+
+    def test_path_depth_limiting(self):
+        lvl1 = createContentInContainer(self.portal, u'Folder', id=u'lvl1')
+        lvl2 = createContentInContainer(lvl1, u'Folder', id=u'lvl2')
+        createContentInContainer(lvl2, u'Folder', id=u'lvl3')
+
+        path = '/plone/lvl1'
+
+        # Depth 0 - only object identified by path
+        json_query = json.dumps({'path': {'query': path, 'depth': 0}})
+
+        results = SearchHandler(self.portal, self.request).search(json_query)
+        result_paths = [item['getPath'] for item in results['member']]
+
+        self.assertEqual([u'/plone/lvl1'], result_paths)
+
+        # Depth 1 - immediate children
+        json_query = json.dumps({'path': {'query': path, 'depth': 1}})
+
+        results = SearchHandler(self.portal, self.request).search(json_query)
+        result_paths = [item['getPath'] for item in results['member']]
+
+        self.assertEqual([u'/plone/lvl1/lvl2'], result_paths)
+
+        # No depth - object itself and all children
+        json_query = json.dumps({'path': path})
+
+        results = SearchHandler(self.portal, self.request).search(json_query)
+        result_paths = [item['getPath'] for item in results['member']]
+
+        self.assertSetEqual(
+            {u'/plone/lvl1', u'/plone/lvl1/lvl2', u'/plone/lvl1/lvl2/lvl3'},
+            set(result_paths))
+
     def test_date_range_query(self):
         createContentInContainer(
             self.folder, u'Document',

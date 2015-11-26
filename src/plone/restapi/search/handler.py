@@ -20,11 +20,19 @@ class SearchHandler(object):
         query = query_parser(json_query)
         return query
 
+    def _constrain_query_by_path(self, query):
+        # If no 'path' parameter was supplied, restrict search to current
+        # context and its children by adding a path constraint
+        if 'path' not in query:
+            path = '/'.join(self.context.getPhysicalPath())
+            query['path'] = path
+
     def search(self, json_query=None):
         if json_query is None:
             json_query = '{}'
 
         query = self._parse_json_query(json_query)
+        self._constrain_query_by_path(query)
 
         lazy_resultset = self.catalog.searchResults(query)
         result = ISerializeToJson(lazy_resultset)
